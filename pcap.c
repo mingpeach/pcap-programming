@@ -30,37 +30,44 @@ void process_data(u_char *useless, const struct pcap_pkthdr *pkthdr, const u_cha
 	// Get protocol type
 	ether_type = ntohs(eh->ether_type);
 	
+	// IP packet
 	if(ether_type == ETHERTYPE_IP) {
 		iph = (struct ip *)packet;
 
 		printf("** IP Packet **\n");
+		
+		// print ethernet source mac & dest mac
 		printf("Src Mac : %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_shost[0], eh->ether_shost[1], eh->ether_shost[2], eh->ether_shost[3], eh->ether_shost[4], eh->ether_shost[5]);
 		printf("Dst Mac : %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_dhost[0], eh->ether_dhost[1], eh->ether_dhost[2], eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5]);
 
+		// print IP source ip & dest ip
 		printf("Src Address : %s\n", inet_ntoa(iph->ip_src));
         	printf("Dst Address : %s\n", inet_ntoa(iph->ip_dst));
 		
+		// TCP packet
 		if(iph->ip_p == IPPROTO_TCP) {
 			tcph = (struct tcphdr *)(packet + iph->ip_hl * 4);
 	
 			printf("** TCP Packet **\n");
+
+			// print TCP source port & dest port
             		printf("Src Port : %d\n" , ntohs(tcph->th_sport));
            		printf("Dst Port : %d\n" , ntohs(tcph->th_dport));
 
 		}
 
-
-while(length--)
-        {
-            printf("%02x", *(packet++)); 
-            if ((++chcnt % 16) == 0) 
-                printf("\n");
-        }
-	printf("\n");
+		// print data
+		while(length--) {
+			printf("%02x", *(packet++)); 
+            		if ((++chcnt % 16) == 0) printf("\n");
+        	}
+		
+		printf("\n========================================================\n");
 	}
 }
 
 int main(int argc, char *argv[]) {
+
 	char *dev, *net, *mask;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
@@ -114,26 +121,24 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
+	/*** PRINT NETWORK & MASK INFORMATION ***/
 	net_addr.s_addr = netp;
 	net = inet_ntoa(net_addr);
-	if(net == NULL){
-	perror("inet_ntoa");
-	exit(1);
+	if(net == NULL) { // exception handling for no net
+		perror("inet_ntoa");
+		exit(1);
 	}
+	
 	mask_addr.s_addr = maskp;
 	mask = inet_ntoa(mask_addr);
-	if(mask == NULL){
-	perror("inet_ntoa");
-	exit(1);
+	if(mask == NULL) { // exception handling for no mask
+		perror("inet_ntoa");
+		exit(1);
 	}
 
-   printf("DEV : %s\n", dev);
-    printf("NET : %s\n",net);
-    printf("MASK : %s\n", mask);
-    printf("========================================================\n");
-
-
-
+    	printf("NET : %s\n",net);
+    	printf("MASK : %s\n", mask);
+    	printf("========================================================\n");
 
 	/*** PACKET CAPTURE ***/
 	handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
@@ -151,7 +156,6 @@ int main(int argc, char *argv[]) {
 		printf("%s\n", errbuf);
 		exit(1);
 	}
-
 
 	/*** COMPILE OPTION ***/
 	if (pcap_compile(handle, &fp, NULL, 0, netp) == -1) {
