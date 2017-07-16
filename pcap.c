@@ -1,3 +1,8 @@
+// Developer: ming
+// platform: Ubuntu 16.04.2
+// lib : libpcap
+//Reference : http://www.joinc.co.kr/w/Site/Network_Programing/AdvancedComm/pcap_intro
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <pcap.h>
@@ -10,6 +15,24 @@ struct ip *iph;
 
 // TCP header structure
 struct tcphdr *tcph;
+
+void process_data(const u_char *packet) {
+	struct ether_header *eh;
+	unsigned short ether_type;
+
+	// Get Ethernet header
+	eh = (struct ether_header *)packet;
+	
+	// Add offset to get IP header
+	packet += sizeof(struct ether_header);	
+
+	// Get protocol type
+	ether_type = ntohs(eh->ether_type);
+	
+	if(ether_type == ETHERTYPE_IP) {
+		printf("IP");
+	}
+}
 
 int main(int argc, char *argv[]) {
 	char *dev, errbuf[PCAP_ERRBUF_SIZE];
@@ -111,5 +134,21 @@ int main(int argc, char *argv[]) {
 	 * 	with p as an argument to fetch or display the error text.
 	 */
   
+	pcap_loop(handle, atoi(argv[1]), process_data, NULL);
+	/*
+	 * int pcap_loop(pcap_t *p, int cnt, pcap_handler callback, u_char *user);
+	 * processes packets from a live capture or "savefile" until cnt packets are processed, 
+	 * the end of the "savefile" is reached when reading from a "savefile", 
+	 * pcap_breakloop() is called, or an error occurs.
+ 	 * does not return when live packet buffer timeouts occur.
+	 * cnt: -1 or 0 is equivalent to infinity, so that packets are processed 
+	 * 	until another ending condition occurs.
+	 * returns 0 if cnt is exhausted or 
+	 *	if, when reading from a "savefile", no more packets are available.
+	 * returns -1 if an error occurs.
+	 * returns -2 if the loop terminated due to a call to pcap_breakloop() 
+	 *	before any packets were processed.
+	 */
+
 	return(0);
 }
