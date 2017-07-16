@@ -3,26 +3,27 @@
 // lib : libpcap
 //Reference : http://www.joinc.co.kr/w/Site/Network_Programing/AdvancedComm/pcap_intro
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <pcap.h>
 #include <net/ethernet.h>
+#include <pcap/pcap.h>
+#include <stdio.h>
+#include <arpa/inet.h>
+#include <stdlib.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
 
-// IP header structure
-struct ip *iph;
+struct ethernet *eth; // Ethernet header structure
+struct ip *iph; // IP header structure
+struct tcphdr *tcph; // TCP header structure
 
-// TCP header structure
-struct tcphdr *tcph;
-
-void process_data(const u_char *packet) {
+void process_data(u_char *useless, const struct pcap_pkthdr *pkthdr, const u_char *packet) {
 	struct ether_header *eh;
 	unsigned short ether_type;
+	int chcnt =0;
+	int length=pkthdr->len;
 
 	// Get Ethernet header
 	eh = (struct ether_header *)packet;
-	
+
 	// Add offset to get IP header
 	packet += sizeof(struct ether_header);	
 
@@ -30,13 +31,44 @@ void process_data(const u_char *packet) {
 	ether_type = ntohs(eh->ether_type);
 	
 	if(ether_type == ETHERTYPE_IP) {
-		printf("IP");
+		iph = (struct ip *)packet;
+
+		printf("** IP Packet **\n");
+		printf("Src Mac : %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_shost[0], eh->ether_shost[1], eh->ether_shost[2], eh->ether_shost[3], eh->ether_shost[4], eh->ether_shost[5]);
+		printf("Dst Mac : %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_dhost[0], eh->ether_dhost[1], eh->ether_dhost[2], eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5]);
+
+		printf("Src Address : %s\n", inet_ntoa(iph->ip_src));
+        	printf("Dst Address : %s\n", inet_ntoa(iph->ip_dst));
+		
+		if(iph->ip_p == IPPROTO_TCP) {
+			tcph = (struct tcphdr *)(packet + iph->ip_hl * 4);
+	
+			printf("** TCP Packet **\n");
+            		printf("Src Port : %d\n" , ntohs(tcph->th_sport));
+           		printf("Dst Port : %d\n" , ntohs(tcph->th_dport));
+
+		}
+
+
+while(length--)
+        {
+            printf("%02x", *(packet++)); 
+            if ((++chcnt % 16) == 0) 
+                printf("\n");
+        }
+	printf("\n");
 	}
 }
 
 int main(int argc, char *argv[]) {
-	char *dev, errbuf[PCAP_ERRBUF_SIZE];
+	char *dev, *net, *mask;
+	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
+	const u_char *packet;
+
+    	struct in_addr net_addr, mask_addr;
+	struct pcap_pkthdr hdr;
+	struct ether_header *eptr;
 
 	// pcap_lookupnet()
 	int ret; 
@@ -64,7 +96,6 @@ int main(int argc, char *argv[]) {
 	}
 	printf("DEV : %s\n", dev);
 
-	
 	/*** GET NETWORK/MASK INFO ***/
 	ret = pcap_lookupnet(dev, &netp, &maskp, errbuf);
 	/*
@@ -83,6 +114,27 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
+	net_addr.s_addr = netp;
+	net = inet_ntoa(net_addr);
+	if(net == NULL){
+	perror("inet_ntoa");
+	exit(1);
+	}
+	mask_addr.s_addr = maskp;
+	mask = inet_ntoa(mask_addr);
+	if(mask == NULL){
+	perror("inet_ntoa");
+	exit(1);
+	}
+
+   printf("DEV : %s\n", dev);
+    printf("NET : %s\n",net);
+    printf("MASK : %s\n", mask);
+    printf("========================================================\n");
+
+
+
+
 	/*** PACKET CAPTURE ***/
 	handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
 	/* 
@@ -96,13 +148,13 @@ int main(int argc, char *argv[]) {
 	 */
 	
 	if (handle == NULL) {
-		fprintf(stderr, "Couldn't find default device %s: %s\n", dev, errbuf);
-		return(2);
+		printf("%s\n", errbuf);
+		exit(1);
 	}
 
 
 	/*** COMPILE OPTION ***/
-	if (pcap_compile(handle, &fp, argv[2], 0, netp) == -1) {
+	if (pcap_compile(handle, &fp, NULL, 0, netp) == -1) {
 		printf("compile error\n");
 		exit(1);
 	}
@@ -134,7 +186,7 @@ int main(int argc, char *argv[]) {
 	 * 	with p as an argument to fetch or display the error text.
 	 */
   
-	pcap_loop(handle, atoi(argv[1]), process_data, NULL);
+	pcap_loop(handle, 0, process_data, NULL);
 	/*
 	 * int pcap_loop(pcap_t *p, int cnt, pcap_handler callback, u_char *user);
 	 * processes packets from a live capture or "savefile" until cnt packets are processed, 
