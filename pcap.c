@@ -20,19 +20,20 @@ void process_data(u_char *useless, const struct pcap_pkthdr *pkthdr, const u_cha
 	unsigned short ether_type;
 	int chcnt =0;
 	int length=pkthdr->len;
+	const u_char *ip_packet;
 
 	// Get Ethernet header
 	eh = (struct ether_header *)packet;
 
 	// Add offset to get IP header
-	packet += sizeof(struct ether_header);	
+	ip_packet = packet + sizeof(struct ether_header);	
 
 	// Get protocol type
 	ether_type = ntohs(eh->ether_type);
 	
 	// IP packet
 	if(ether_type == ETHERTYPE_IP) {
-		iph = (struct ip *)packet;
+		iph = (struct ip *)ip_packet;
 
 		printf("** IP Packet **\n");
 		
@@ -46,7 +47,7 @@ void process_data(u_char *useless, const struct pcap_pkthdr *pkthdr, const u_cha
 		
 		// TCP packet
 		if(iph->ip_p == IPPROTO_TCP) {
-			tcph = (struct tcphdr *)(packet + iph->ip_hl * 4);
+			tcph = (struct tcphdr *)(ip_packet + iph->ip_hl * 4);
 	
 			printf("** TCP Packet **\n");
 
@@ -58,7 +59,7 @@ void process_data(u_char *useless, const struct pcap_pkthdr *pkthdr, const u_cha
 
 		// print data
 		while(length--) {
-			printf("%02x", *(packet++)); 
+			printf("%02x", *(ip_packet++)); 
             		if ((++chcnt % 16) == 0) printf("\n");
         	}
 		
@@ -104,7 +105,7 @@ int main(int argc, char *argv[]) {
 	printf("DEV : %s\n", dev);
 
 	/*** GET NETWORK/MASK INFO ***/
-	ret = pcap_lookupnet(dev, &netp, &maskp, errbuf);
+	//ret = pcap_lookupnet(dev, &netp, &maskp, errbuf);
 	/*
 	 * int pcap_lookupnet(const char *device, bpf_u_int32 *netp,
 	 *	bpf_u_int32 *maskp, char *errbuf);
@@ -141,7 +142,7 @@ int main(int argc, char *argv[]) {
     	printf("========================================================\n");
 
 	/*** PACKET CAPTURE ***/
-	handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
+	handle = pcap_open_live("dum0", BUFSIZ, 1, 1000, errbuf);
 	/* 
 	 * pcap_t *pcap_open_live(char *device, int snaplen, int promisc, int to_ms, char *ebuf);
 	 * device: device
