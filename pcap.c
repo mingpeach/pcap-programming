@@ -1,7 +1,7 @@
 // Developer: ming
 // platform: Ubuntu 16.04.2
 // lib : libpcap
-//Reference : http://www.joinc.co.kr/w/Site/Network_Programing/AdvancedComm/pcap_intro
+// Reference : http://www.joinc.co.kr/w/Site/Network_Programing/AdvancedComm/pcap_intro
 
 #include <net/ethernet.h>
 #include <pcap/pcap.h>
@@ -15,12 +15,14 @@ struct ethernet *eth; // Ethernet header structure
 struct ip *iph; // IP header structure
 struct tcphdr *tcph; // TCP header structure
 
-void process_data(u_char *useless, const struct pcap_pkthdr *pkthdr, const u_char *packet) {
+void process_data(const struct pcap_pkthdr *pkthdr, const u_char *packet) {
 	struct ether_header *eh;
 	unsigned short ether_type;
-	int chcnt =0;
-	int length=pkthdr->len;
+	int chcnt = 0;
+	int length;
+
 	const u_char *ip_packet;
+	const u_char *data;
 
 	// Get Ethernet header
 	eh = (struct ether_header *)packet;
@@ -38,8 +40,10 @@ void process_data(u_char *useless, const struct pcap_pkthdr *pkthdr, const u_cha
 		printf("** IP Packet **\n");
 		
 		// print ethernet source mac & dest mac
-		printf("Src Mac : %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_shost[0], eh->ether_shost[1], eh->ether_shost[2], eh->ether_shost[3], eh->ether_shost[4], eh->ether_shost[5]);
-		printf("Dst Mac : %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_dhost[0], eh->ether_dhost[1], eh->ether_dhost[2], eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5]);
+		printf("Src Mac : %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_shost[0], eh->ether_shost[1], 
+			eh->ether_shost[2], eh->ether_shost[3], eh->ether_shost[4], eh->ether_shost[5]);
+		printf("Dst Mac : %02x:%02x:%02x:%02x:%02x:%02x\n", eh->ether_dhost[0], eh->ether_dhost[1], 
+			eh->ether_dhost[2], eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5]);
 
 		// print IP source ip & dest ip
 		printf("Src Address : %s\n", inet_ntoa(iph->ip_src));
@@ -48,6 +52,7 @@ void process_data(u_char *useless, const struct pcap_pkthdr *pkthdr, const u_cha
 		// TCP packet
 		if(iph->ip_p == IPPROTO_TCP) {
 			tcph = (struct tcphdr *)(ip_packet + iph->ip_hl * 4);
+			data = ip_packet + (tcph->th_off * 4);
 	
 			printf("** TCP Packet **\n");
 
@@ -55,14 +60,16 @@ void process_data(u_char *useless, const struct pcap_pkthdr *pkthdr, const u_cha
             		printf("Src Port : %d\n" , ntohs(tcph->th_sport));
            		printf("Dst Port : %d\n" , ntohs(tcph->th_dport));
 
+			// get data length
+			length = iph->ip_len - (iph->ip_hl * 4) - (tcph->th_off * 4);
+			
+			//while(length--) {
+			//	printf("%02x", *(data++)); 
+            		//	if ((++chcnt % 16) == 0) printf("\n");
+        		//}
+
 		}
 
-		// print data
-		while(length--) {
-			printf("%02x", *(ip_packet++)); 
-            		if ((++chcnt % 16) == 0) printf("\n");
-        	}
-		
 		printf("\n========================================================\n");
 	}
 }
@@ -73,10 +80,14 @@ int main(int argc, char *argv[]) {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
 	const u_char *packet;
+	int res;
 
     	struct in_addr net_addr, mask_addr;
 	struct pcap_pkthdr hdr;
 	struct ether_header *eptr;
+
+	struct pcap_pkthdr *header;
+	const u_char *pkt_data;
 
 	// pcap_lookupnet()
 	int ret; 
@@ -105,7 +116,7 @@ int main(int argc, char *argv[]) {
 	printf("DEV : %s\n", dev);
 
 	/*** GET NETWORK/MASK INFO ***/
-	//ret = pcap_lookupnet(dev, &netp, &maskp, errbuf);
+	//ret = pcap_lookupnet("dum0", &netp, &maskp, errbuf);
 	/*
 	 * int pcap_lookupnet(const char *device, bpf_u_int32 *netp,
 	 *	bpf_u_int32 *maskp, char *errbuf);
@@ -190,22 +201,13 @@ int main(int argc, char *argv[]) {
 	 * returns -1 on failure. If -1 is returned, pcap_geterr() or pcap_perror() may be called
 	 * 	with p as an argument to fetch or display the error text.
 	 */
-  
-	pcap_loop(handle, 0, process_data, NULL);
-	/*
-	 * int pcap_loop(pcap_t *p, int cnt, pcap_handler callback, u_char *user);
-	 * processes packets from a live capture or "savefile" until cnt packets are processed, 
-	 * the end of the "savefile" is reached when reading from a "savefile", 
-	 * pcap_breakloop() is called, or an error occurs.
- 	 * does not return when live packet buffer timeouts occur.
-	 * cnt: -1 or 0 is equivalent to infinity, so that packets are processed 
-	 * 	until another ending condition occurs.
-	 * returns 0 if cnt is exhausted or 
-	 *	if, when reading from a "savefile", no more packets are available.
-	 * returns -1 if an error occurs.
-	 * returns -2 if the loop terminated due to a call to pcap_breakloop() 
-	 *	before any packets were processed.
-	 */
+
+	while(1) {
+	res = pcap_next_ex(handle, &header, &pkt_data);
+	if (res == 0) continue;
+	process_data(header, pkt_data);
+
+	}
 
 	return(0);
 }
