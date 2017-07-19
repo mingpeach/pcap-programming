@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <netinet/ip.h>
 #include <netinet/tcp.h>
+#include <stdint.h>
 
 struct ethernet *eth; // Ethernet header structure
 struct ip *iph; // IP header structure
@@ -17,7 +18,7 @@ struct tcphdr *tcph; // TCP header structure
 
 void process_data(const struct pcap_pkthdr *pkthdr, const u_char *packet) {
 	struct ether_header *eh;
-	unsigned short ether_type;
+	uint16_t ether_type;
 	int chcnt = 0;
 	int length;
 	char buf[20];
