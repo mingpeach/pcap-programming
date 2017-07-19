@@ -20,6 +20,7 @@ void process_data(const struct pcap_pkthdr *pkthdr, const u_char *packet) {
 	unsigned short ether_type;
 	int chcnt = 0;
 	int length;
+	char buf[20];
 
 	const u_char *ip_packet;
 	const u_char *data;
@@ -46,8 +47,8 @@ void process_data(const struct pcap_pkthdr *pkthdr, const u_char *packet) {
 			eh->ether_dhost[2], eh->ether_dhost[3], eh->ether_dhost[4], eh->ether_dhost[5]);
 
 		// print IP source ip & dest ip
-		printf("Src Address : %s\n", inet_ntoa(iph->ip_src));
-        	printf("Dst Address : %s\n", inet_ntoa(iph->ip_dst));
+		printf("Src Address : %s\n", inet_ntop(AF_INET, &(iph->ip_src), buf, sizeof(buf)));
+        	printf("Dst Address : %s\n", inet_ntop(AF_INET, &(iph->ip_dst), buf, sizeof(buf)));
 		
 		// TCP packet
 		if(iph->ip_p == IPPROTO_TCP) {
@@ -137,14 +138,14 @@ int main(int argc, char *argv[]) {
 	net_addr.s_addr = netp;
 	net = inet_ntop(AF_INET, &net_addr, buf, sizeof(buf));
 	if(net == NULL) { // exception handling for no net
-		perror("inet_ntoa");
+		perror("inet_ntop");
 		exit(1);
 	}
 	
 	mask_addr.s_addr = maskp;
 	mask = inet_ntop(AF_INET, &mask_addr, buf, sizeof(buf));
 	if(mask == NULL) { // exception handling for no mask
-		perror("inet_ntoa");
+		perror("inet_ntop");
 		exit(1);
 	}
 
