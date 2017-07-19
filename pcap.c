@@ -76,7 +76,7 @@ void process_data(const struct pcap_pkthdr *pkthdr, const u_char *packet) {
 
 int main(int argc, char *argv[]) {
 
-	char *dev, *net, *mask;
+	char *dev, *net, *mask, buf[20];
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t *handle;
 	const u_char *packet;
@@ -135,14 +135,14 @@ int main(int argc, char *argv[]) {
 
 	/*** PRINT NETWORK & MASK INFORMATION ***/
 	net_addr.s_addr = netp;
-	net = inet_ntoa(net_addr);
+	net = inet_ntop(AF_INET, &net_addr, buf, sizeof(buf));
 	if(net == NULL) { // exception handling for no net
 		perror("inet_ntoa");
 		exit(1);
 	}
 	
 	mask_addr.s_addr = maskp;
-	mask = inet_ntoa(mask_addr);
+	mask = inet_ntop(AF_INET, &mask_addr, buf, sizeof(buf));
 	if(mask == NULL) { // exception handling for no mask
 		perror("inet_ntoa");
 		exit(1);
@@ -203,11 +203,15 @@ int main(int argc, char *argv[]) {
 	 */
 
 	while(1) {
-	res = pcap_next_ex(handle, &header, &pkt_data);
-	if (res == 0) continue;
-	process_data(header, pkt_data);
-
+		res = pcap_next_ex(handle, &header, &pkt_data);
+		/*
+		 * int pcap_next_ex(pcap_t *p, struct pcap_pkthdr **pkt_header, const u_char **pkt_data);
+		 */
+		if (res == 0) continue;
+		process_data(header, pkt_data);
 	}
+
+	//if (res == -1 || res == -2) 
 
 	return(0);
 }
