@@ -155,7 +155,7 @@ int main(int argc, char *argv[]) {
     	printf("========================================================\n");
 
 	/*** PACKET CAPTURE ***/
-	handle = pcap_open_live("dum0", BUFSIZ, 1, 1000, errbuf);
+	handle = pcap_open_live(dev, BUFSIZ, 1, 1000, errbuf);
 	/* 
 	 * pcap_t *pcap_open_live(char *device, int snaplen, int promisc, int to_ms, char *ebuf);
 	 * device: device
@@ -191,10 +191,10 @@ int main(int argc, char *argv[]) {
 
 	
 	/*** SET FILTER ***/
-	if (pcap_setfilter(handle, &fp) == -1) {
-		printf("setfilter error\n");
-		exit(0);
-	}
+	//if (pcap_setfilter(handle, &fp) == -1) {
+		//printf("setfilter error\n");
+		//exit(0);
+	//}
 	/*
 	 * int pcap_setfilter(pcap_t *p, struct bpf_program *fp);
 	 * used to specify a filter program.
@@ -207,13 +207,21 @@ int main(int argc, char *argv[]) {
 	while(1) {
 		res = pcap_next_ex(handle, &header, &pkt_data);
 		/*
-		 * int pcap_next_ex(pcap_t *p, struct pcap_pkthdr **pkt_header, const u_char **pkt_data);
+		 * int pcap_next_ex(pcap_t *p, struct pcap_pkthdr **pkt_header,
+		 * 	const u_char **pkt_data);
+		 * read the next packet from a pcap_t  
+		 * handle: 
+		 * struct pcap_pkthdr pkt_header
+		 * conster
 		 */
-		if (res == 0) continue;
+		if (res == 0||res == -1) continue;
 		process_data(header, pkt_data);
-	}
 
-	//if (res == -1 || res == -2) 
+		if (res == -2) {
+			printf("end of file\n");
+			exit(1);
+		}
+	}
 
 	return(0);
 }
