@@ -19,10 +19,10 @@ C
 
 ### Compile & Execute
 ```
-gcc -o pcap pcap.c -lpcap
+$ gcc -o pcap pcap.c -lpcap
 ```
 ```
-sudo ./pcap -1 "port 80"
+$ sudo ./pcap -1 "port 80"
 ```
 
 ### Result
